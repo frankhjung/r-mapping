@@ -1,0 +1,137 @@
+---
+title: 'Google Trends: fake news'
+author: "Frank H Jung"
+output:
+  pdf_document:
+    keep_tex: yes
+    latex_engine: xelatex
+    toc: yes
+  html_document:
+    keep_md: yes
+    toc: yes
+---
+
+## Introduction
+
+The following reports on references to the term "[fake
+news](https://trends.google.com.au/trends/explore?q=fake%20news)" as reported by
+[Google Trends](https://trends.google.com.au/trends/).
+
+```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
+require(knitr)
+library(rworldmap)
+library(ggplot2)
+library(dplyr)
+opts_chunk$set(echo = TRUE, cache = TRUE, cache.path = "cache/",
+               fig.width = 10, fig.path = "figure/")
+```
+
+## Data
+
+The data was collected on 08 May 2017:
+
+* Dataset: [geoMap.csv](data/geoMap.csv) [236B]
+* Dataset: [multiTimeline.csv](data/multiTimeline.csv) [3.5K]
+
+Data from Google needs to be massaged a bit to work here:
+
+* skip first two comment lines
+
+* add column headings
+
+* replace "United States" with "USA"
+
+* replace "United Kingdom" with "UK"
+
+## Load the data
+
+Load maps and Google trends data:
+```{r loaddata, echo=TRUE}
+# load world map (excluding the polls)
+map.world <- map_data(map = "world", ylim = c(-60, 90))
+
+# load fake news data by country
+timeline <- read.csv('data/multiTimeline.csv',
+                     skip = 2,
+                     col.names = c('week', 'popularity'),
+                     colClasses = c('Date', 'integer'))
+
+# load fake news data by country
+fakenews <- read.csv('data/geoMap.csv',
+                     skip = 2,
+                     col.names = c('region', 'popularity'),
+                     colClasses = c('character', 'integer'))
+fakenews$region <- sub('United States', 'USA', fakenews$region, fixed = TRUE)
+fakenews$region <- sub('United Kingdom', 'Uk', fakenews$region, fixed = TRUE)
+
+# merge by country rank
+map.fakenews <- merge(map.world, fakenews,
+                      by.x = 'region', all.x = TRUE,
+                      by.y = 'region')
+
+# sort by group, then order
+map.fakenews <- arrange(map.fakenews, group, order)
+```
+
+The time line data looks like:
+
+```{r timelinedata, echo=TRUE}
+head(timeline)
+```
+
+The fakenews data looks like:
+
+```{r fakenews, echo=TRUE}
+head(fakenews)
+```
+
+## Plot
+
+Plot interest over time:
+
+```{r plot, echo=TRUE, error=FALSE, warning=FALSE}
+timeline %>% ggplot(aes(x = week, y = popularity)) +
+    geom_line(colour = 'darkred', size = 1.5) +
+    labs(title = "Interest over time", x = "Period (weekly)", y = "Popularity")
+```
+
+Numbers represent search interest relative to the highest point on the chart for
+the given region and time. A value of 100 is the peak popularity for the term. A
+value of 50 means that the term is half as popular. Likewise a score of 0 means
+the term was less than 1% as popular as the peak.
+
+## Map
+
+Plot interest by region:
+
+```{r map, echo=TRUE, error=FALSE, warning=FALSE}
+map.fakenews %>% ggplot() +
+    theme(legend.position = "right") +
+    geom_map(map = map.world,
+             aes(map_id = region, x = long, y = lat, fill = popularity)) +
+    scale_fill_gradient(low = "red", high = "darkred", guide = "colourbar") +
+    coord_equal() +
+    labs(title = "Google Trends: 'fake news'", x = "longitude", y = "latitude")
+```
+
+See in which location your term was most popular during the specified time
+frame. Values are calculated on a scale from 0 to 100, where 100 is the location
+with the most popularity as a fraction of total searches in that location, a
+value of 50 indicates a location which is half as popular and a value of 0
+indicates a location where the term was less than 1% as popular as the peak.
+
+**Note**
+
+A higher value means a higher proportion of all queries, not a higher absolute
+query count. So a tiny country where 80% of the queries are for "bananas" will
+get twice the score of a very large country where only 40% of the queries are
+for "bananas".
+
+## Session Information
+
+This report was produced using the following [RStudio](https://www.rstudio.com/)
+environment:
+
+```{r session}
+sessionInfo()
+```

@@ -1,0 +1,14 @@
+# ignore these file types
+*~
+*.bak
+cache
+figure/
+*.html
+*.pdf
+*.png
+.RData
+.Rhistory
+*.Rproj
+.Rproj.user
+*.swp
+*.tex
