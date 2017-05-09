@@ -18,30 +18,29 @@ news](https://trends.google.com.au/trends/explore?q=fake%20news)" as reported by
 [Google Trends](https://trends.google.com.au/trends/).
 
 ```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
-require(knitr)
-library(rworldmap)
-library(ggplot2)
-library(dplyr)
+require(knitr)      # pdf and html output
+library(rworldmap)  # world map
+library(ggplot2)    # plots and graphs
+library(dplyr)      # merge
 opts_chunk$set(echo = TRUE, cache = TRUE, cache.path = "cache/",
                fig.width = 10, fig.path = "figure/")
 ```
 
 ## Data
 
-The data was collected on 08 May 2017:
+The data was collected from Google Trends on 08 May 2017:
 
 * Dataset: [geoMap.csv](data/geoMap.csv) [236B]
 * Dataset: [multiTimeline.csv](data/multiTimeline.csv) [3.5K]
 
-Data from Google needs to be massaged a bit to work here:
+The data needs to be massaged a bit to work here:
 
 * skip first two comment lines
-
 * add column headings
+* in [geoMap.csv](data/geoMap.csv) replace "United States" with "USA"
+* in [geoMap.csv](data/geoMap.csv) replace "United Kingdom" with "UK"
 
-* replace "United States" with "USA"
-
-* replace "United Kingdom" with "UK"
+To order the bar chart, the regions are factored and ordered by popularity.
 
 ## Load the data
 
@@ -62,15 +61,15 @@ fakenews <- read.csv('data/geoMap.csv',
                      col.names = c('region', 'popularity'),
                      colClasses = c('character', 'integer'))
 fakenews$region <- sub('United States', 'USA', fakenews$region, fixed = TRUE)
-fakenews$region <- sub('United Kingdom', 'Uk', fakenews$region, fixed = TRUE)
+fakenews$region <- sub('United Kingdom', 'UK', fakenews$region, fixed = TRUE)
 
 # merge by country rank
 map.fakenews <- merge(map.world, fakenews,
                       by.x = 'region', all.x = TRUE,
                       by.y = 'region')
 
-# sort by group, then order
-map.fakenews <- arrange(map.fakenews, group, order)
+# sort by group, then order (not required)
+# map.fakenews <- arrange(map.fakenews, group, order)
 ```
 
 The time line data looks like:
@@ -90,7 +89,7 @@ head(fakenews)
 Plot interest over time:
 
 ```{r plot, echo=TRUE, error=FALSE, warning=FALSE}
-timeline %>% ggplot(aes(x = week, y = popularity)) +
+ggplot(timeline, aes(x = week, y = popularity)) +
     geom_line(colour = 'darkred', size = 1.5) +
     labs(title = "Interest over time", x = "Period (weekly)", y = "Popularity")
 ```
@@ -105,7 +104,7 @@ the term was less than 1% as popular as the peak.
 Plot interest by region:
 
 ```{r map, echo=TRUE, error=FALSE, warning=FALSE}
-map.fakenews %>% ggplot() +
+ggplot(map.fakenews) +
     theme(legend.position = "right") +
     geom_map(map = map.world,
              aes(map_id = region, x = long, y = lat, fill = popularity)) +
@@ -122,10 +121,21 @@ indicates a location where the term was less than 1% as popular as the peak.
 
 **Note**
 
-A higher value means a higher proportion of all queries, not a higher absolute
-query count. So a tiny country where 80% of the queries are for "bananas" will
-get twice the score of a very large country where only 40% of the queries are
-for "bananas".
+A higher value means a higher proportion of all queries, not a higher absolute 
+query count. So a tiny country where 80% of the queries are for "fake news" will
+get twice the score of a very large country where only 40% of the queries are 
+for "fake news".
+
+```{r legend, echo=TRUE, error=FALSE, warning=FALSE}
+fakenews$region <- factor(fakenews$region, 
+                          levels = fakenews$region[order(fakenews$popularity)])
+ggplot(fakenews, aes(x = region, y = popularity, fill = popularity)) +
+    geom_bar(stat = "identity", position = "identity") +
+    scale_fill_gradient(low = "red", high = "darkred") +
+    geom_text(aes(label = popularity), hjust = -0.1) +
+    coord_flip() +
+    labs(title = "Interest by region")
+```
 
 ## Session Information
 
